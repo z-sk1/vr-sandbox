@@ -1,0 +1,11 @@
+Model Information:
+* title:	Hornet - Hollow Knight
+* source:	https://sketchfab.com/3d-models/hornet-hollow-knight-21289ed448a64138a4a8a6ce23f068b7
+* author:	Lunorvyn (https://sketchfab.com/Lunorvyn)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Hornet - Hollow Knight" (https://sketchfab.com/3d-models/hornet-hollow-knight-21289ed448a64138a4a8a6ce23f068b7) by Lunorvyn (https://sketchfab.com/Lunorvyn) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

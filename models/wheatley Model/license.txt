@@ -1,0 +1,11 @@
+Model Information:
+* title:	Wheatley core - from portal 2 (original)
+* source:	https://sketchfab.com/3d-models/wheatley-core-from-portal-2-original-c1bdc8523a8849bd81d6aa901daa409f
+* author:	DAVID.3D.ART (https://sketchfab.com/david3dart)
+
+Model License:
+* license type:	CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
+* requirements:	Author must be credited. No commercial use.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Wheatley core - from portal 2 (original)" (https://sketchfab.com/3d-models/wheatley-core-from-portal-2-original-c1bdc8523a8849bd81d6aa901daa409f) by DAVID.3D.ART (https://sketchfab.com/david3dart) licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
