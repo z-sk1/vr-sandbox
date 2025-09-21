@@ -9,18 +9,26 @@ local hands = {}
 local world = lovr.physics.newWorld(0, -4.9, 0)
 
 local startMenuButtons = {
-  { label = "Start", x = -0.15, y = 0, z = 0, pointingAt = false },
-  { label = "Settings", x = -0.15, y = -0.05, z = 0, pointingAt = false },
+  { id = "start", label = "Start", x = -0.15, y = 0, z = 0, pointingAt = false },
+  { id = "settings", label = "Settings", x = -0.15, y = -0.1, z = 0, pointingAt = false },
+  { id = "quit", label = "Quit", x = -.15, y = -.2, z = 0, pointingAt = false },
 }
 local buttonSize = { w = 0.25, h = 0.1, d = 0.02 }
 
 local volume = 0.5 
 
 local settingsMenuButtons = {
-  { label = "Volume: " .. tostring((volume / 100)) .. "%", x = -.15, y = 0, z = 0, pointingAt = false, isOn = true },
-  { label = "Hitbox", x = -.15, y = -.05, z = 0, pointingAt = false, isOn = false },
+  { id = "volume", type = "toggle", label = "Volume: " .. tostring((volume * 100)) .. "%", x = -.15, y = 0, z = 0, pointingAt = false, isOn = true },
+  { id = "hitbox", type = "toggle", label = "Hitbox", x = -.15, y = -.1, z = 0, pointingAt = false, isOn = false },
+  { id = "back", label = "Back", x = -.15, y = -.2, z = 0, pointingAt = false },
 }
 lovr.audio.setVolume(volume)
+
+local pauseMenuButtons = {
+  { id = "unpause", label = "Unpause", x = -.15, y = 0, z = 0, pointingAt = false },
+  { id = "settings", label = "Settings", x = -.15, y = -.1, z = 0, pointingAt = false },
+  { id = "titlescreen", label = "Main Menu", x = -.15, y = -.2 }
+}
 
 function drawStartMenu(pass)
   local hx, hy, hz = lovr.headset.getPosition("head")
@@ -99,10 +107,12 @@ function drawSettingsMenu(pass)
     pass:box(menuX + btn.x, menuY + btn.y, menuZ + btn.z, buttonSize.w, buttonSize.h, buttonSize.d)
 
     local txtColor
-    if btn.isOn then
-      txtColor = {0, 1, 0}
-    elseif not btn.isOn then 
-      txtColor = {1, 0, 0}
+    if btn.type == "toggle" then 
+      if btn.isOn then
+        txtColor = {0, 1, 0}
+      else
+        txtColor = {1, 0, 0}
+      end 
     else
       txtColor = {1, 1, 1}
     end 
@@ -220,10 +230,19 @@ function lovr.update(dt)
     local dx, dy, dz = lovr.headset.getDirection("hand/right")
 
     for _, btn in ipairs(startMenuButtons) do
-      local bx = wx + btn.x
-      local by = wy + btn.y
-      local bz = wz + btn.z
-      local rayLength = 1
+      btn.pointingAt = false 
+      -- get menu anchor relative to head
+      local hx, hy, hz = lovr.headset.getPosition("head")
+      local fx, _, fz = lovr.headset.getDirection("head")
+      local forward = lovr.math.newVec3(fx, 0, fz):normalize()
+      local menuX = hx + forward.x * 1
+      local menuY = hy
+      local menuZ = hz + forward.z * 1
+      local bx = menuX + btn.x
+      local by = menuY + btn.y
+      local bz = menuZ + btn.z
+
+      local rayLength = 3
 
       -- vector from ray origin to button
       local v = lovr.math.newVec3(bx - wx, by - wy, bz - wz)
@@ -237,13 +256,22 @@ function lovr.update(dt)
       local closest = lovr.math.newVec3(wx, wy, wz) + dir * t
       local dist = (lovr.math.newVec3(bx, by, bz) - closest):length()
 
-      btn.pointingAt = dist < 0.1
-      if btn.pointingAt and lovr.headset.isDown("hand/right", "trigger") then
-        if btn.label == "Start" then
+      -- button box half-extents
+      local halfW, halfH, halfD = buttonSize.w / 2, buttonSize.h / 2, buttonSize.d / 2
+
+      -- check if closest point is inside the box
+      btn.pointingAt =
+        math.abs(closest.x - bx) < halfW and
+        math.abs(closest.y - by) < halfH and
+        math.abs(closest.z - bz) < halfD
+      if btn.pointingAt and lovr.headset.wasReleased("hand/right", "trigger") then
+        if btn.id == "start" then
           gameState = "game"
-        elseif btn.label == "Settings" then
+        elseif btn.id == "settings" then
           previousGameState = gameState
           gameState = "settings"
+        elseif btn.id == "quit" then
+          lovr.event.quit()
         end
       end
     end
@@ -252,10 +280,19 @@ function lovr.update(dt)
     local dx, dy, dz = lovr.headset.getDirection("hand/right")
 
     for _, btn in ipairs(settingsMenuButtons) do
-      local bx = wx + btn.x
-      local by = wy + btn.y
-      local bz = wz + btn.z
-      local rayLength = 1
+      btn.pointingAt = false
+      -- get menu anchor relative to head
+      local hx, hy, hz = lovr.headset.getPosition("head")
+      local fx, _, fz = lovr.headset.getDirection("head")
+      local forward = lovr.math.newVec3(fx, 0, fz):normalize()
+      local menuX = hx + forward.x * 1
+      local menuY = hy
+      local menuZ = hz + forward.z * 1
+      local bx = menuX + btn.x
+      local by = menuY + btn.y
+      local bz = menuZ + btn.z
+
+      local rayLength = 3
 
       -- vector from ray origin to button
       local v = lovr.math.newVec3(bx - wx, by - wy, bz - wz)
@@ -269,35 +306,49 @@ function lovr.update(dt)
       local closest = lovr.math.newVec3(wx, wy, wz) + dir * t
       local dist = (lovr.math.newVec3(bx, by, bz) - closest):length()
 
-      btn.pointingAt = dist > 0.1
+      -- button box half-extents
+      local halfW, halfH, halfD = buttonSize.w / 2, buttonSize.h / 2, buttonSize.d / 2
+
+      -- check if closest point is inside the box
+      btn.pointingAt =
+        math.abs(closest.x - bx) < halfW and
+        math.abs(closest.y - by) < halfH and
+        math.abs(closest.z - bz) < halfD
       if btn.pointingAt then
-        if btn.label == "Volume" then
-          if lovr.headset.isDown("hand/right", "trigger") then
-            btn.isOn = not btn.isOn 
+        if btn.id == "volume" then
+          if lovr.headset.wasReleased("hand/right", "trigger") then
+            btn.isOn = not btn.isOn
+            if btn.isOn then
+              lovr.audio.setVolume(volume)
+            end
           end
+          if btn.isOn then 
+            local dx, dy = lovr.headset.getAxis("hand/right", "thumbstick")
+            local deadzone = 0.1
+            local increaseRate = 0.02
 
-          local dx, dy = lovr.headset.getAxis("hand/right", "thumbstick")
-          local deadzone = 0.1
+            if math.abs(dy) > deadzone then
+              if dy > deadzone then volume = volume + increaseRate end
+              if dy < -deadzone then volume = volume - increaseRate end 
 
-          if math.abs(dy) > deadzone then
-            local forward = lovr.math.newVec3(0, dy, 0)
-            if forward:length() < 1e-6 then forward:set(0,0,-1) end
-            forward:normalize()
+              if volume > 1 then volume = 1 end
+              if volume < 0 then volume = 0 end
 
-            local forwardInput = dy 
-
-            local move = forward * forwardInput
-
-            volume = move * dt
-            lovr.audio.setVolume(volume)
-
-            if volume > 100 then volume = 100 end
-            if volume <= 0 then volume = 0 lovr.audio.setVolume(-1) end 
+              btn.label = "Volume: " .. tostring(math.floor(volume * 100)) .. "%"
+              lovr.audio.setVolume(volume)
+            end 
+          else
+            lovr.audio.setVolume(0)
           end
-        elseif btn.label == "Hitbox" then
-          if lovr.headset.isDown("hand/right", "trigger") then
+        elseif btn.id == "hitbox" then
+          if lovr.headset.wasReleased("hand/right", "trigger") then
             btn.isOn = not btn.isOn
           end
+        elseif btn.id == "back" then
+          if lovr.headset.wasReleased("hand/right", "trigger") then 
+            gameState = previousGameState
+            previousGameState = nil
+          end 
         end
       end 
     end
@@ -412,7 +463,7 @@ function lovr.update(dt)
           col = col,
         })
       elseif shapes[shapeIndex] == "the knight" then
-        local size = .005
+        local size = .3
         local col = spawnCube(wx, wy, wz, size)
         table.insert(objects, {
           type = "the knight",
@@ -422,7 +473,7 @@ function lovr.update(dt)
           col = col,
         })
       elseif shapes[shapeIndex] == "hornet" then
-        local size = .1
+        local size = .3
         local col = spawnCube(wx, wy, wz, size)
         table.insert(objects, {
           type = "hornet",
@@ -432,7 +483,7 @@ function lovr.update(dt)
           col = col,
         })
       elseif shapes[shapeIndex] == "wheatley" then
-        local size = .005
+        local size = .025
         local col = spawnSphere(wx, wy, wz, size)
         table.insert(objects, {
           type = "wheatley",
@@ -479,7 +530,7 @@ function lovr.update(dt)
           col = col,
         })
       elseif shapes[shapeIndex] == "the knight" then
-        local size = .005
+        local size = .3
         local col = spawnCube(wx, wy, wz, size)
         table.insert(objects, {
           type = "the knight",
@@ -489,7 +540,7 @@ function lovr.update(dt)
           col = col,
         })
       elseif shapes[shapeIndex] == "hornet" then
-        local size = .1
+        local size = .2
         local col = spawnCube(wx, wy, wz, size)
         table.insert(objects, {
           type = "hornet",
@@ -499,7 +550,7 @@ function lovr.update(dt)
           col = col,
         })
       elseif shapes[shapeIndex] == "wheatley" then
-        local size = .005
+        local size = .025
         local col = spawnSphere(wx, wy, wz, size)
         table.insert(objects, {
           type = "wheatley",
@@ -522,6 +573,8 @@ end
 function lovr.draw(pass)
   if gameState == "start" then
     drawStartMenu(pass)
+  elseif gameState == "settings" then
+    drawSettingsMenu(pass)
   elseif gameState == "game" then
     pass:translate(-player.x, -player.y, -player.z)
 
@@ -546,13 +599,13 @@ function lovr.draw(pass)
         pass:draw(yvModel, x, y, z, c.size / 100, angle)
       elseif c.type == "the knight" then
         pass:setColor(1,1,1)
-        pass:draw(knightModel, x, y, z, c.size, angle)
+        pass:draw(knightModel, x, y, z, c.size / 50, angle)
       elseif c.type == "hornet" then
         pass:setColor(1,1,1)
-        pass:draw(hornetModel, x, y, z, c.size, angle)
+        pass:draw(hornetModel, x, y, z, c.size / 2.5, angle)
       elseif c.type == "wheatley" then
         pass:setColor(1,1,1)
-        pass:draw(wheatleyModel, x, y, z, c.size, angle)
+        pass:draw(wheatleyModel, x, y, z, c.size / 5, angle)
       end 
     end
 
@@ -571,5 +624,26 @@ function lovr.draw(pass)
     pass:setColor(1,1,1)
     local randAngle = lovr.headset.getTime()
     pass:text(shapes[shapeIndex], rx, ry + 0.15, rz, 0.05, randAngle)
+
+    if settingsMenuButtons[2].isOn then
+      for _, collider in ipairs(world:getColliders()) do
+        if collider == floor.col then return end
+
+        local shape = collider:getShapes()[1]  -- collider may have multiple shapes
+        local x, y, z = collider:getPosition()
+        local angle, ax, ay, az = collider:getOrientation()
+
+        if shape:getType() == 'box' then
+          local sx, sy, sz = shape:getDimensions()
+          pass:setColor(1, 0, 0) -- red
+          pass:cube(x, y, z, sx, angle, ax, ay, az)
+        elseif shape:getType() == 'sphere' then
+          local radius = shape:getRadius()
+          pass:setColor(0, 1, 0) -- green
+          pass:sphere(x, y, z, radius)
+        end
+      end
+    end
+    pass:setColor(1,1,1)
   end 
 end
