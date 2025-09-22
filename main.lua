@@ -20,14 +20,15 @@ local volume = 0.5
 local settingsMenuButtons = {
   { id = "volume", type = "toggle", label = "Volume: " .. tostring((volume * 100)) .. "%", x = -.15, y = 0, z = 0, pointingAt = false, isOn = true },
   { id = "hitbox", type = "toggle", label = "Hitbox", x = -.15, y = -.1, z = 0, pointingAt = false, isOn = false },
-  { id = "back", label = "Back", x = -.15, y = -.2, z = 0, pointingAt = false },
+  { id = "raylength", label = "Ray Length", x = -.15, y = -.2, z= 0, pointingAt = false, isOn = false}
+  { id = "back", label = "Back", x = -.15, y = -.3, z = 0, pointingAt = false },
 }
 lovr.audio.setVolume(volume)
 
 local pauseMenuButtons = {
   { id = "unpause", label = "Unpause", x = -.15, y = 0, z = 0, pointingAt = false },
   { id = "settings", label = "Settings", x = -.15, y = -.1, z = 0, pointingAt = false },
-  { id = "titlescreen", label = "Main Menu", x = -.15, y = -.2 }
+  { id = "titlescreen", label = "Main Menu", x = -.15, y = -.2, z = 0, pointingAt = false }
 }
 
 function drawStartMenu(pass)
