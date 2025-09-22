@@ -20,8 +20,7 @@ local volume = 0.5
 local settingsMenuButtons = {
   { id = "volume", type = "toggle", label = "Volume: " .. tostring((volume * 100)) .. "%", x = -.15, y = 0, z = 0, pointingAt = false, isOn = true },
   { id = "hitbox", type = "toggle", label = "Hitbox", x = -.15, y = -.1, z = 0, pointingAt = false, isOn = false },
-  { id = "raylength", label = "Ray Length", x = -.15, y = -.2, z= 0, pointingAt = false, isOn = false}
-  { id = "back", label = "Back", x = -.15, y = -.3, z = 0, pointingAt = false },
+  { id = "back", label = "Back", x = -.15, y = -.2, z = 0, pointingAt = false },
 }
 lovr.audio.setVolume(volume)
 
@@ -221,10 +220,10 @@ function lovr.load()
   wheatleyModel = lovr.graphics.newModel('models/wheatley Model/scene.gltf')
 
   backgroundMus = {
-    lovr.audio.newSource('sounds/background1.wav', { decode = false }),
-    lovr.audio.newSource('sounds/background2.wav', { decode = false }),
-    lovr.audio.newSource('sounds/background3.wav', { decode = false }),
-    lovr.audio.newSource('sounds/background4.wav', { decode = false }),
+    lovr.audio.newSource('sounds/music/background1.wav', { decode = false }),
+    lovr.audio.newSource('sounds/music/background2.wav', { decode = false }),
+    lovr.audio.newSource('sounds/music/background3.wav', { decode = false }),
+    lovr.audio.newSource('sounds/music/background4.wav', { decode = false }),
   }
 
   currentTrack = nil 
@@ -232,8 +231,13 @@ function lovr.load()
   playRandomTrack(nil)
 
   sfx = {
-
+    lovr.audio.newSource('sounds/sfx/yv.ogg', { decode = true }),
+    lovr.audio.newSource('sounds/sfx/ya.mp3', { decode = true }),
+    lovr.audio.newSource('sounds/sfx/hornet.mp3', { decode = true }),
+    lovr.audio.newSource('sounds/sfx/wheatley.wav', { decode = true }),
   }
+
+  currentSFX = nil 
 end
 
 function playRandomTrack(exclude)
@@ -248,6 +252,17 @@ function playRandomTrack(exclude)
   end
   backgroundMus[choice]:play()
   currentTrack = choice
+end 
+
+function playCharacterSFX() 
+  if shapeIndex >= 3 then
+    if currentSFX then
+      sfx[currentSFX]:stop()
+    end
+
+    currentSFX = shapeIndex - 2
+    sfx[currentSFX]:play()
+  end
 end 
 
 function spawnCube(x, y, z, size)
@@ -399,7 +414,7 @@ function lovr.update(dt)
     local wx, wy, wz = lovr.headset.getPosition("hand/right")
     local dx, dy, dz = lovr.headset.getDirection("hand/right")
 
-    for _, btn in ipairs(settingsMenuButtons) do
+    for _, btn in ipairs(pauseMenuButtons) do
       btn.pointingAt = false
       -- get menu anchor relative to head
       local hx, hy, hz = lovr.headset.getPosition("head")
@@ -435,10 +450,6 @@ function lovr.update(dt)
         math.abs(closest.y - by) < halfH and
         math.abs(closest.z - bz) < halfD
 
-      if lovr.headset.wasPressed("hand/left", "y") then
-        gameState = "game"
-      end 
-
       if btn.pointingAt and lovr.headset.wasReleased("hand/right", "trigger") then
         if btn.id == "unpause" then
           gameState = "game"
@@ -454,6 +465,10 @@ function lovr.update(dt)
         end
       end
     end 
+
+    if lovr.headset.wasPressed("hand/left", "y") then
+      gameState = "game"
+    end
   end
 
   if gameState ~= "game" then return end 
@@ -529,6 +544,7 @@ function lovr.update(dt)
     if shapeIndex > #shapes then
       shapeIndex = 1
     end 
+    playCharacterSFX()
   end
 
   if lovr.headset.wasPressed("hand/left", "y") then
@@ -589,7 +605,7 @@ function lovr.update(dt)
           col = col,
         })
       elseif shapes[shapeIndex] == "wheatley" then
-        local size = .025
+        local size = .075
         local col = spawnSphere(wx, wy, wz, size)
         table.insert(objects, {
           type = "wheatley",
@@ -656,7 +672,7 @@ function lovr.update(dt)
           col = col,
         })
       elseif shapes[shapeIndex] == "wheatley" then
-        local size = .025
+        local size = .075
         local col = spawnSphere(wx, wy, wz, size)
         table.insert(objects, {
           type = "wheatley",
@@ -681,6 +697,8 @@ function lovr.draw(pass)
     drawStartMenu(pass)
   elseif gameState == "settings" then
     drawSettingsMenu(pass)
+  elseif gameState == "paused" then 
+    drawPauseMenu(pass)
   elseif gameState == "game" then
     pass:translate(-player.x, -player.y, -player.z)
 
