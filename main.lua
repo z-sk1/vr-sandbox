@@ -122,6 +122,48 @@ function drawSettingsMenu(pass)
   end
 end 
 
+function drawPauseMenu(pass)
+  local hx, hy, hz = lovr.headset.getPosition("head")
+
+  local fx, _, fz = lovr.headset.getDirection("head")
+  local forward = lovr.math.newVec3(fx, 0, fz)
+  forward:normalize()
+
+  local menuX = hx + forward.x * 1
+  local menuY = hy
+  local menuZ = hz + forward.z * 1
+
+  local rayLength = 1
+  local wx, wy, wz = lovr.headset.getPosition("hand/right")
+  local dx, dy, dz = lovr.headset.getDirection("hand/right")
+  pass:setColor(1, 1, 0) -- yellow
+  pass:line(wx, wy, wz, wx + dx*rayLength, wy + dy*rayLength, wz + dz*rayLength)
+
+  pass:setColor(0, 0, 0, 0.7)
+  pass:box(menuX, menuY, menuZ, 0.6, 0.3, 0.01)
+
+  pass:setColor(1, 1, 1)
+  pass:text("paused", menuX, menuY + 0.1, menuZ + 0.02, 0.05, 0, 0)
+
+  for i, btn in ipairs(pauseMenuButtons) do
+    local color
+
+    if btn.pointingAt then
+      color =  {0.8, 0.8, 0.2}
+    else
+      color = {0.2, 0.2, 0.2}
+    end
+
+    pass:setColor(color)
+    pass:box(menuX + btn.x, menuY + btn.y, menuZ + btn.z, buttonSize.w, buttonSize.h, buttonSize.d)
+
+    local txtColor = {1, 1, 1}
+
+    pass:setColor(txtColor)
+    pass:text(btn.label, menuX + btn.x, menuY + btn.y, menuZ + btn.z + 0.015, 0.04, 0, 0)
+  end
+end 
+
 function drawShapeIndicator(pass)
   local hand = hands.right
   if not hand then return end
@@ -352,6 +394,65 @@ function lovr.update(dt)
         end
       end 
     end
+  elseif gameState == "paused" then
+    local wx, wy, wz = lovr.headset.getPosition("hand/right")
+    local dx, dy, dz = lovr.headset.getDirection("hand/right")
+
+    for _, btn in ipairs(settingsMenuButtons) do
+      btn.pointingAt = false
+      -- get menu anchor relative to head
+      local hx, hy, hz = lovr.headset.getPosition("head")
+      local fx, _, fz = lovr.headset.getDirection("head")
+      local forward = lovr.math.newVec3(fx, 0, fz):normalize()
+      local menuX = hx + forward.x * 1
+      local menuY = hy
+      local menuZ = hz + forward.z * 1
+      local bx = menuX + btn.x
+      local by = menuY + btn.y
+      local bz = menuZ + btn.z
+
+      local rayLength = 3
+
+      -- vector from ray origin to button
+      local v = lovr.math.newVec3(bx - wx, by - wy, bz - wz)
+      local dir = lovr.math.newVec3(dx, dy, dz)
+      dir:normalize()
+
+      -- project v onto ray
+      local t = v:dot(dir)
+      t = math.max(0, math.min(rayLength, t)) -- clamp to ray segment
+      
+      local closest = lovr.math.newVec3(wx, wy, wz) + dir * t
+      local dist = (lovr.math.newVec3(bx, by, bz) - closest):length()
+
+      -- button box half-extents
+      local halfW, halfH, halfD = buttonSize.w / 2, buttonSize.h / 2, buttonSize.d / 2
+
+      -- check if closest point is inside the box
+      btn.pointingAt =
+        math.abs(closest.x - bx) < halfW and
+        math.abs(closest.y - by) < halfH and
+        math.abs(closest.z - bz) < halfD
+
+      if lovr.headset.wasPressed("hand/left", "y") then
+        gameState = "game"
+      end 
+
+      if btn.pointingAt and lovr.headset.wasReleased("hand/right", "trigger") then
+        if btn.id == "unpause" then
+          gameState = "game"
+        elseif btn.id == "settings" then
+          previousGameState = gameState
+          gameState = "settings"
+        elseif btn.id == "titlescreen" then
+          for _, c in ipairs(objects) do
+            c.col:destroy()
+          end
+          objects = {}
+          gameState = "start"
+        end
+      end
+    end 
   end
 
   if gameState ~= "game" then return end 
@@ -427,6 +528,10 @@ function lovr.update(dt)
     if shapeIndex > #shapes then
       shapeIndex = 1
     end 
+  end
+
+  if lovr.headset.wasPressed("hand/left", "y") then
+    gameState = "paused"
   end
 
   if lovr.headset.isDown("hand/right", "trigger") then
