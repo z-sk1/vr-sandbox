@@ -510,7 +510,7 @@ function lovr.update(dt)
 
     local gripping = lovr.headset.isDown("hand/" .. handName, "grip")
 
-    if gripping and not hand.held then
+    if gripping and not hand.held then  
       -- try to grab nearest cube
       for _, c in ipairs(objects) do
         local cx, cy, cz = c.col:getPosition()
@@ -518,6 +518,9 @@ function lovr.update(dt)
         if dx*dx + dy*dy + dz*dz < 0.3*0.3 then
           hand.held = c
           c.col:setKinematic(true) -- follow hand
+
+          lovr.headset.vibrate("hand/" .. handName, 0.7, 0.2)
+
           break
         end
       end
@@ -528,12 +531,16 @@ function lovr.update(dt)
       if math.abs(thumbY) > deadzone then
         hand.held.size = hand.held.size + thumbY * sizeScale * dt
 
+        lovr.headset.vibrate("hand/right", 0.6, 0.01)
+
         local x, y, z = hand.held.col:getPosition()
 
         hand.held.col:destroy()
         hand.held.col = spawnObject(hand.held.type, x, y, z, hand.held.size)
       end 
     elseif not gripping and hand.held then
+      lovr.headset.vibrate("hand/" .. handName, 0.9, 0.1) 
+
       hand.held.col:setKinematic(false)
       hand.held.col:setLinearVelocity((hand.velocity * 3):unpack()) -- stronger throw
       hand.held.col:setAngularVelocity(
@@ -563,76 +570,12 @@ function lovr.update(dt)
     gameState = "paused"
   end
 
-  if lovr.headset.isDown("hand/right", "trigger") then
-      local hx, hy, hz = lovr.headset.getPosition("hand/left")
-      local dx, dy, dz = lovr.headset.getDirection("hand/left")
-      local wx, wy, wz = player.x + hx + dx * 0.3, player.y + hy + dy * 0.3, player.z + hz + dz * 0.3
-      if shapes[shapeIndex] == "cubes" then
-        local size = .3
-        local col = spawnObject("cube", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "cube",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "spheres" then
-        local size = .3
-        local col = spawnObject("sphere", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "sphere",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "yv" then
-        local size = .3
-        local col = spawnObject("yv", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "yv",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "the knight" then
-        local size = .3
-        local col = spawnObject("the knight", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "the knight",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "hornet" then
-        local size = .3
-        local col = spawnObject("hornet", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "hornet",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "wheatley" then
-        local size = .075
-        local col = spawnObject("wheatley", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "wheatley",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      end
-  end   
+  for handName, hand in pairs(hands) do
+    if lovr.headset.isDown("hand/" .. handName, "trigger") then
+      lovr.headset.vibrate("hand/" .. handName, 0.6, 0.01)
 
-  if lovr.headset.isDown("hand/left", "trigger") then 
-      local hx, hy, hz = lovr.headset.getPosition("hand/left")
-      local dx, dy, dz = lovr.headset.getDirection("hand/left")
+      local hx, hy, hz = lovr.headset.getPosition("hand/" .. handName)
+      local dx, dy, dz = lovr.headset.getDirection("hand/" .. handName)
       local wx, wy, wz = player.x + hx + dx * 0.3, player.y + hy + dy * 0.3, player.z + hz + dz * 0.3
       if shapes[shapeIndex] == "cubes" then
         local size = .3
@@ -695,7 +638,8 @@ function lovr.update(dt)
           col = col,
         })
       end
-  end
+    end
+  end 
 
   if lovr.headset.isDown("hand/right", "a") then
     for _, c in ipairs(objects) do
