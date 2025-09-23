@@ -265,16 +265,16 @@ function playCharacterSFX()
   end
 end 
 
-function spawnCube(x, y, z, size)
-  local col = world:newBoxCollider(x, y, z, size, size, size)
-  col:setRestitution(.3) -- bouncy
-  return col
-end
-
-function spawnSphere(x, y, z, size)
-  local col = world:newSphereCollider(x, y, z, size)
-  col:setRestitution(.3)
-  return col 
+function spawnObject(type, x, y, z, size)
+  if type == "cube" or type == "yv" or type == "the knight" or type == "hornet" then
+    local col = world:newBoxCollider(x, y, z, size, size, size)
+    col:setRestitution(.3) -- bouncy
+    return col
+  elseif type == "sphere" or type == "wheatley" then
+    local col = world:newSphereCollider(x, y, z, size)
+    col:setRestitution(.3)
+    return col 
+  end
 end
 
 function lovr.update(dt) 
@@ -521,6 +521,18 @@ function lovr.update(dt)
           break
         end
       end
+    elseif gripping and hand.held then
+      local thumbX, thumbY = lovr.headset.getAxis("hand/right", "thumbstick")
+      local deadzone = 0.2
+      local sizeScale = 0.5
+      if math.abs(thumbY) > deadzone then
+        hand.held.size = hand.held.size + thumbY * sizeScale * dt
+
+        local x, y, z = hand.held.col:getPosition()
+
+        hand.held.col:destroy()
+        hand.held.col = spawnObject(hand.held.type, x, y, z, hand.held.size)
+      end 
     elseif not gripping and hand.held then
       hand.held.col:setKinematic(false)
       hand.held.col:setLinearVelocity((hand.velocity * 3):unpack()) -- stronger throw
@@ -552,11 +564,12 @@ function lovr.update(dt)
   end
 
   if lovr.headset.isDown("hand/right", "trigger") then
-      local hx, hy, hz = lovr.headset.getPosition("hand/right")
-      local wx, wy, wz = player.x + hx, player.y + hy, player.z + hz
+      local hx, hy, hz = lovr.headset.getPosition("hand/left")
+      local dx, dy, dz = lovr.headset.getDirection("hand/left")
+      local wx, wy, wz = player.x + hx + dx * 0.3, player.y + hy + dy * 0.3, player.z + hz + dz * 0.3
       if shapes[shapeIndex] == "cubes" then
         local size = .3
-        local col = spawnCube(wx, wy, wz, size)
+        local col = spawnObject("cube", wx, wy, wz, size)
         table.insert(objects, {
           type = "cube",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -566,7 +579,7 @@ function lovr.update(dt)
         })
       elseif shapes[shapeIndex] == "spheres" then
         local size = .3
-        local col = spawnSphere(wx, wy, wz, size)
+        local col = spawnObject("sphere", wx, wy, wz, size)
         table.insert(objects, {
           type = "sphere",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -576,7 +589,7 @@ function lovr.update(dt)
         })
       elseif shapes[shapeIndex] == "yv" then
         local size = .3
-        local col = spawnCube(wx, wy, wz, size)
+        local col = spawnObject("yv", wx, wy, wz, size)
         table.insert(objects, {
           type = "yv",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -586,7 +599,7 @@ function lovr.update(dt)
         })
       elseif shapes[shapeIndex] == "the knight" then
         local size = .3
-        local col = spawnCube(wx, wy, wz, size)
+        local col = spawnObject("the knight", wx, wy, wz, size)
         table.insert(objects, {
           type = "the knight",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -596,7 +609,7 @@ function lovr.update(dt)
         })
       elseif shapes[shapeIndex] == "hornet" then
         local size = .3
-        local col = spawnCube(wx, wy, wz, size)
+        local col = spawnObject("hornet", wx, wy, wz, size)
         table.insert(objects, {
           type = "hornet",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -606,7 +619,7 @@ function lovr.update(dt)
         })
       elseif shapes[shapeIndex] == "wheatley" then
         local size = .075
-        local col = spawnSphere(wx, wy, wz, size)
+        local col = spawnObject("wheatley", wx, wy, wz, size)
         table.insert(objects, {
           type = "wheatley",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -623,7 +636,7 @@ function lovr.update(dt)
       local wx, wy, wz = player.x + hx + dx * 0.3, player.y + hy + dy * 0.3, player.z + hz + dz * 0.3
       if shapes[shapeIndex] == "cubes" then
         local size = .3
-        local col = spawnCube(wx, wy, wz, size)
+        local col = spawnObject("cube", wx, wy, wz, size)
         table.insert(objects, {
           type = "cube",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -633,7 +646,7 @@ function lovr.update(dt)
         })
       elseif shapes[shapeIndex] == "spheres" then
         local size = .3
-        local col = spawnSphere(wx, wy, wz, size)
+        local col = spawnObject("sphere", wx, wy, wz, size)
         table.insert(objects, {
           type = "sphere",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -643,7 +656,7 @@ function lovr.update(dt)
         })
       elseif shapes[shapeIndex] == "yv" then
         local size = .3
-        local col = spawnCube(wx, wy, wz, size)
+        local col = spawnObject("yv", wx, wy, wz, size)
         table.insert(objects, {
           type = "yv",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -653,7 +666,7 @@ function lovr.update(dt)
         })
       elseif shapes[shapeIndex] == "the knight" then
         local size = .3
-        local col = spawnCube(wx, wy, wz, size)
+        local col = spawnObject("the knight", wx, wy, wz, size)
         table.insert(objects, {
           type = "the knight",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -662,8 +675,8 @@ function lovr.update(dt)
           col = col,
         })
       elseif shapes[shapeIndex] == "hornet" then
-        local size = .2
-        local col = spawnCube(wx, wy, wz, size)
+        local size = .3
+        local col = spawnObject("hornet", wx, wy, wz, size)
         table.insert(objects, {
           type = "hornet",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
@@ -673,7 +686,7 @@ function lovr.update(dt)
         })
       elseif shapes[shapeIndex] == "wheatley" then
         local size = .075
-        local col = spawnSphere(wx, wy, wz, size)
+        local col = spawnObject("wheatley", wx, wy, wz, size)
         table.insert(objects, {
           type = "wheatley",
           pos = lovr.math.newVec3(wx, wy, wz - .5),
