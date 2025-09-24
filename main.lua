@@ -266,16 +266,30 @@ function playCharacterSFX()
 end 
 
 function spawnObject(type, x, y, z, size)
+  local col
   if type == "cube" or type == "yv" or type == "the knight" or type == "hornet" then
-    local col = world:newBoxCollider(x, y, z, size, size, size)
-    col:setRestitution(.3) -- bouncy
-    return col
+    col = world:newBoxCollider(x, y, z, size, size, size)
   elseif type == "sphere" or type == "wheatley" then
-    local col = world:newSphereCollider(x, y, z, size)
-    col:setRestitution(.3)
-    return col 
+    col = world:newSphereCollider(x, y, z, size)
+  else
+    print("Warning: spawnObject called with unknown type: " .. tostring(type))
+    return nil
   end
+  col:setRestitution(.3)
+  return col
 end
+
+function spawnAndInsert(type, x, y, z, size)
+  local col = spawnObject(type, x, y, z, size)
+  table.insert(objects, {
+    type = type,
+    pos = lovr.math.newVec3(x, y, z - .5),
+    size = size,
+    color = { math.random(), math.random(), math.random() },
+    col = col,
+    rot = lovr.math.quat()
+  })
+end 
 
 function lovr.update(dt) 
   if currentTrack and not backgroundMus[currentTrack]:isPlaying() then
@@ -528,16 +542,26 @@ function lovr.update(dt)
       local thumbX, thumbY = lovr.headset.getAxis("hand/right", "thumbstick")
       local deadzone = 0.2
       local sizeScale = 0.5
+      local rotateSpeed = 2
       if math.abs(thumbY) > deadzone then
         hand.held.size = hand.held.size + thumbY * sizeScale * dt
 
-        lovr.headset.vibrate("hand/right", 0.6, 0.01)
+        lovr.headset.vibrate("hand/" .. handName, 0.6, 0.01)
 
         local x, y, z = hand.held.col:getPosition()
+        
+        hand.held.size = math.max(0.1, math.min(hand.held.size, 5))
 
+
+        -- Destroy and respawn collider
         hand.held.col:destroy()
         hand.held.col = spawnObject(hand.held.type, x, y, z, hand.held.size)
-      end 
+      end
+
+       -- Always sync collider position to hand
+      local hx, hy, hz = lovr.headset.getPosition("hand/" .. handName)
+      local worldX, worldY, worldZ = player.x + hx, player.y + hy, player.z + hz
+      hand.held.col:setPosition(worldX, worldY, worldZ)
     elseif not gripping and hand.held then
       lovr.headset.vibrate("hand/" .. handName, 0.9, 0.1) 
 
@@ -564,6 +588,7 @@ function lovr.update(dt)
       shapeIndex = 1
     end 
     playCharacterSFX()
+    lovr.headset.vibrate("hand/right", 0.6, 0.01)
   end
 
   if lovr.headset.wasPressed("hand/left", "y") then
@@ -577,68 +602,24 @@ function lovr.update(dt)
       local hx, hy, hz = lovr.headset.getPosition("hand/" .. handName)
       local dx, dy, dz = lovr.headset.getDirection("hand/" .. handName)
       local wx, wy, wz = player.x + hx + dx * 0.3, player.y + hy + dy * 0.3, player.z + hz + dz * 0.3
-      if shapes[shapeIndex] == "cubes" then
-        local size = .3
-        local col = spawnObject("cube", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "cube",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "spheres" then
-        local size = .3
-        local col = spawnObject("sphere", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "sphere",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "yv" then
-        local size = .3
-        local col = spawnObject("yv", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "yv",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "the knight" then
-        local size = .3
-        local col = spawnObject("the knight", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "the knight",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "hornet" then
-        local size = .3
-        local col = spawnObject("hornet", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "hornet",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
-      elseif shapes[shapeIndex] == "wheatley" then
-        local size = .075
-        local col = spawnObject("wheatley", wx, wy, wz, size)
-        table.insert(objects, {
-          type = "wheatley",
-          pos = lovr.math.newVec3(wx, wy, wz - .5),
-          size = size,
-          color = { math.random(), math.random(), math.random() },
-          col = col,
-        })
+
+      local shape = shapes[shapeIndex]
+
+      local size 
+      if shape == "wheatley" then
+        size = .075
+      else
+        size = .3
       end
-    end
+
+      if shape == "cubes" then
+        shape = "cube"
+      elseif shape == "spheres" then
+        shape = "sphere"
+      end
+      
+      spawnAndInsert(shape, wx, wy, wz, size)
+    end 
   end 
 
   if lovr.headset.isDown("hand/right", "a") then
@@ -670,20 +651,20 @@ function lovr.draw(pass)
       local x, y, z = c.col:getPosition()
       local angle, ax, ay, az = c.col:getOrientation()
       if c.type == "cube" then 
-        pass:setColor(c.color)
-        pass:cube(x, y, z, c.size, angle, ax, ay, az)
+          pass:setColor(c.color)
+          pass:cube(x, y, z, c.size, angle, ax, ay, az)
       elseif c.type == "sphere" then 
-        pass:setColor(c.color)
-        pass:sphere(x, y, z, c.size)
+          pass:setColor(c.color)
+          pass:sphere(x, y, z, c.size)
       elseif c.type == "yv" then
-        pass:setColor(1,1,1)
-        pass:draw(yvModel, x, y, z, c.size / 100, angle)
+          pass:setColor(1,1,1)
+          pass:draw(yvModel, x, y, z, c.size / 100, angle)
       elseif c.type == "the knight" then
-        pass:setColor(1,1,1)
-        pass:draw(knightModel, x, y, z, c.size / 50, angle)
+          pass:setColor(1,1,1)
+          pass:draw(knightModel, x, y, z, c.size / 50, angle)
       elseif c.type == "hornet" then
-        pass:setColor(1,1,1)
-        pass:draw(hornetModel, x, y, z, c.size / 2.5, angle)
+          pass:setColor(1,1,1)
+          pass:draw(hornetModel, x, y, z, c.size / 2.5, angle)
       elseif c.type == "wheatley" then
         pass:setColor(1,1,1)
         pass:draw(wheatleyModel, x, y, z, c.size / 5, angle)
@@ -704,6 +685,7 @@ function lovr.draw(pass)
 
     pass:setColor(1,1,1)
     local randAngle = lovr.headset.getTime()
+
     pass:text(shapes[shapeIndex], rx, ry + 0.15, rz, 0.05, randAngle)
 
     if settingsMenuButtons[2].isOn then
